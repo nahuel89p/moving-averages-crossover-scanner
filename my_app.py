@@ -81,7 +81,6 @@ def moving_averages(btc,tma1,tma2,ma1,ma2):
     elif tma1 == "dynamicminmax125":    
        btc['ma1'] = dynamic_minmax( pd.Series.to_numpy(btc['close']), ma1,1.25)   
         
-        
     if tma2 == "sma":
         btc['ma2'] = btc['close'].rolling(window=ma2).mean()
     elif tma2 == "ema":
@@ -226,7 +225,6 @@ def loop_single_pair(btcdataset, mini1,maxi1,mini2,maxi2, tma1,tma2, rows,same_s
     ma1 = np.random.uniform(mini1, maxi1, rows).round(0).astype(int)
     ma2 = np.random.uniform(mini2, maxi2, rows).round(0).astype(int)
     
-
     if type(tma1) == str:
         tma1 = [tma1]
     else:
@@ -372,7 +370,7 @@ def update_chart(df,pma1,tma1,pma2,tma2,ticker_input,logscale):
                   paper_bgcolor='rgba(0, 0, 0, 0)',
                   plot_bgcolor='rgba(0, 0, 0, 0)',
                   # width=870,
-                  # height=565,
+                  height=565,
                   hovermode='x',
                   autosize=True,
                   # title={'text': str(ticker_input)+" - Close", 'font': {'color': 'white'}, 'x': 0.5},
@@ -440,21 +438,18 @@ osdata.insert(loc=0, column='tma1', value=ostma1)
 osdata.insert(loc=0, column='ma2', value=osma2)
 osdata.insert(loc=0, column='ma1', value=osma1)
 
-
-
-
 ostrace,oslayout=update_chart(mkdata,osma1,ostma1,osma2,ostma2,osticker,False)
 
 
-server = dash.Dash(
+app = dash.Dash(
     __name__,
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
 )
-server.config.suppress_callback_exceptions = False
+app.config.suppress_callback_exceptions = False
 
-server_color = {"graph_bg": "#082255", "graph_line": "#007ACE"}
+app_color = {"graph_bg": "#082255", "graph_line": "#007ACE"}
 
-server.layout = html.Div(
+app.layout = html.Div(
     [
         # header
         html.Div(
@@ -472,7 +467,7 @@ server.layout = html.Div(
                 html.Div(
                     [
                         html.Img(
-                            src=server.get_asset_url("dash-new-logo.png"),
+                            src=app.get_asset_url("dash-new-logo.png"),
                             className="app__menu__img",
                         )
                     ],
@@ -759,7 +754,7 @@ server.layout = html.Div(
 )
 
 
-@server.callback(
+@app.callback(
     Output('memory-output', 'data'),
     [Input('ticker_input', 'value'),
     Input('intvl1', 'value')],prevent_initial_call=False  # whatever this will be
@@ -776,7 +771,7 @@ def generate_df_callback(ticker_input,intvl1):
     return mkdata
 
 
-@server.callback(
+@app.callback(
     [Output('memory-output2', 'data',allow_duplicate=True),    
      Output('table', 'data',allow_duplicate=True)],
     [Input('memory-output', 'data'),
@@ -793,7 +788,7 @@ def update_date_range(data,value):
     mkdata = mkdata.to_json()
     return mkdata, np.nan
 
-@server.callback(
+@app.callback(
     [Output('chart', 'figure'),
     Output('singletable', 'data',allow_duplicate=True),    
     Output('singletable', 'columns'),
@@ -822,23 +817,18 @@ def updateChart(pma1,tma1,pma2,tma2,df,log,ticker_input):
     }
     
     data2 = updatetable(df,pma1,tma1,pma2,tma2)
-    
     data2 = pd.DataFrame([data2])
-
     data2.insert(loc=0, column='tma2', value=tma2)
     data2.insert(loc=0, column='tma1', value=tma1)
     data2.insert(loc=0, column='ma2', value=pma2)
     data2.insert(loc=0, column='ma1', value=pma1)
     
     columns= [{'name': col, 'id': col} for col in data2.columns ]
-    
     data2= data2.to_dict('records') 
-        
     selected = [0]
-        
     return graphdata, data2, columns,selected
 
-@server.callback(
+@app.callback(
     [Output('table', 'data'),    
     Output('table', 'columns'),
     Output("table", "selected_rows",allow_duplicate=True)],
@@ -852,32 +842,22 @@ def updateChart(pma1,tma1,pma2,tma2,df,log,ticker_input):
 
 def updateTable(n_clicks, data,slider_1, slider_2,tma1_2,tma2_2,same_same):
     ctx = dash.callback_context
-
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     selected = [0]
-    
     if button_id == "submit-val button":
-        
         mini_1 = slider_1[0]
         maxi_1 = slider_1[1]
-        
         mini_2 = slider_2[0]
         maxi_2 = slider_2[1]
-        
         df = pd.read_json(data)    
-        
         grid = loop_single_pair(df, mini_1,maxi_1,mini_2,maxi_2, tma1_2,tma2_2, 20,same_same)
-        
         columns= [{'name': col, 'id': col} for col in grid.columns]
-        
         data2= grid.to_dict('records')  
     else:
         pass
- 
-    
     return data2, columns,selected        
 
-@server.callback(
+@app.callback(
     [Output('pma1', 'value'),
      Output('pma2', 'value'),
      Output('tma1', 'value'),
@@ -894,7 +874,7 @@ def updateControls(selected_rows,data):
     
     return pma1,pma2,tma1,tma2
 
-@server.callback(
+@app.callback(
     [Output('tma1_2', 'value'),
     Output('tma2_2', 'value')],
     [Input('check_all', 'value')],prevent_initial_call=True)
@@ -904,7 +884,7 @@ def updateDropdowns(value):
     else:
         raise PreventUpdate()
 
-@server.callback(
+@app.callback(
     Output('checklist-container', 'children'),
     [Input('tma1_2', 'value'),
     Input('tma2_2', 'value')],prevent_initial_call=False)
@@ -915,9 +895,8 @@ def updateCheckbox(value,value2):
         return dcc.Checklist(id="check_all",
                                             options=[{'label': 'Check all MAs', 'value': "Yes"}],
                                             value=[])
-
 if __name__ == "__main__":
-    server.run_server(debug=True)
+    app.run_server(debug=True)
 
 
 
