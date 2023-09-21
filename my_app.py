@@ -22,7 +22,7 @@ def moving_averages(btc,tma1,tma2,ma1,ma2):
         btc['ma1'] = btc['close'].ewm(span=ma1, adjust=False).mean()
     elif tma1 == "wma":
         weights = np.arange(1,ma1+1) #this creates an array with integers 1 to 10 included
-        btc['ma1'] = btc['close'].rolling(ma1).apply(lambda prices: np.dot(prices, weights)/weights.sum(), raw=True)
+        btc['ma1'] = btc['close'].rolling(ma1).serverly(lambda prices: np.dot(prices, weights)/weights.sum(), raw=True)
     elif tma1 == "dema":
         ema1 = btc['close'].ewm(span=ma1, adjust=False).mean()
         ema2 = ema1.ewm(span=ma1, adjust=False).mean()
@@ -88,7 +88,7 @@ def moving_averages(btc,tma1,tma2,ma1,ma2):
         btc['ma2'] = btc['close'].ewm(span=ma2, adjust=False).mean()
     elif tma2 == "wma":
         weights = np.arange(1,ma2+1) #this creates an array with integers 1 to 10 included
-        btc['ma2'] = btc['close'].rolling(ma2).apply(lambda prices: np.dot(prices, weights)/weights.sum(), raw=True)
+        btc['ma2'] = btc['close'].rolling(ma2).serverly(lambda prices: np.dot(prices, weights)/weights.sum(), raw=True)
     elif tma2 == "dema":
         ema1 = btc['close'].ewm(span=ma2, adjust=False).mean()
         ema2 = ema1.ewm(span=ma2, adjust=False).mean()
@@ -284,13 +284,13 @@ def loop_single_pair(btcdataset, mini1,maxi1,mini2,maxi2, tma1,tma2, rows,same_s
                               }
             
             
-        lprofitlongs.append(output['profitlongs'])
-        lprofitshorts.append(output['profitshorts'])
-        lprofitstotal.append(output['profitstotal'])
-        ltrades.append(output['trades'])  
-        ltrades_positivos.append(output['%_winning_trades'])  
-        lmaxdrawdown.append(output['max_drawdown'])  
-        lbeats_bnh.append(output['beats_bnh']) 
+        lprofitlongs.serverend(output['profitlongs'])
+        lprofitshorts.serverend(output['profitshorts'])
+        lprofitstotal.serverend(output['profitstotal'])
+        ltrades.serverend(output['trades'])  
+        ltrades_positivos.serverend(output['%_winning_trades'])  
+        lmaxdrawdown.serverend(output['max_drawdown'])  
+        lbeats_bnh.serverend(output['beats_bnh']) 
      
     grid['profitsshorts'] = lprofitshorts
     grid['profitslongs'] = lprofitlongs      
@@ -446,40 +446,40 @@ osdata.insert(loc=0, column='ma1', value=osma1)
 ostrace,oslayout=update_chart(mkdata,osma1,ostma1,osma2,ostma2,osticker,False)
 
 
-app = dash.Dash(
+server = dash.Dash(
     __name__,
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
 )
-app.config.suppress_callback_exceptions = False
+server.config.suppress_callback_exceptions = False
 
-app_color = {"graph_bg": "#082255", "graph_line": "#007ACE"}
+server_color = {"graph_bg": "#082255", "graph_line": "#007ACE"}
 
-app.layout = html.Div(
+server.layout = html.Div(
     [
         # header
         html.Div(
             [
                 html.Div(
                     [
-                        html.H4("Moving Averages Crossover Strategy Scanner", className="app__header__title"),
+                        html.H4("Moving Averages Crossover Strategy Scanner", className="server__header__title"),
                         html.P(
-                            "This app enables quick scanning of random moving averages crossover strategies for swing trading.",
-                            className="app__header__title--grey",
+                            "This server enables quick scanning of random moving averages crossover strategies for swing trading.",
+                            className="server__header__title--grey",
                         ),
                     ],
-                    className="app__header__desc",
+                    className="server__header__desc",
                 ),
                 html.Div(
                     [
                         html.Img(
-                            src=app.get_asset_url("dash-new-logo.png"),
-                            className="app__menu__img",
+                            src=server.get_asset_url("dash-new-logo.png"),
+                            className="server__menu__img",
                         )
                     ],
-                    className="app__header__logo",
+                    className="server__header__logo",
                 ),
             ],
-            className="app__header",
+            className="server__header",
         ),
         html.Div(
             [
@@ -711,7 +711,7 @@ app.layout = html.Div(
                 ),
                 
             ],
-            className="app__content",
+            className="server__content",
         ),
         html.Div(
     [
@@ -752,14 +752,14 @@ app.layout = html.Div(
                     className="one-third column histogram__direction",
                 ),
             ],
-            className="app__content",
+            className="server__content",
         ),
     ],
-    className="app__container",
+    className="server__container",
 )
 
 
-@app.callback(
+@server.callback(
     Output('memory-output', 'data'),
     [Input('ticker_input', 'value'),
     Input('intvl1', 'value')],prevent_initial_call=False  # whatever this will be
@@ -776,7 +776,7 @@ def generate_df_callback(ticker_input,intvl1):
     return mkdata
 
 
-@app.callback(
+@server.callback(
     [Output('memory-output2', 'data',allow_duplicate=True),    
      Output('table', 'data',allow_duplicate=True)],
     [Input('memory-output', 'data'),
@@ -793,7 +793,7 @@ def update_date_range(data,value):
     mkdata = mkdata.to_json()
     return mkdata, np.nan
 
-@app.callback(
+@server.callback(
     [Output('chart', 'figure'),
     Output('singletable', 'data',allow_duplicate=True),    
     Output('singletable', 'columns'),
@@ -838,7 +838,7 @@ def updateChart(pma1,tma1,pma2,tma2,df,log,ticker_input):
         
     return graphdata, data2, columns,selected
 
-@app.callback(
+@server.callback(
     [Output('table', 'data'),    
     Output('table', 'columns'),
     Output("table", "selected_rows",allow_duplicate=True)],
@@ -877,7 +877,7 @@ def updateTable(n_clicks, data,slider_1, slider_2,tma1_2,tma2_2,same_same):
     
     return data2, columns,selected        
 
-@app.callback(
+@server.callback(
     [Output('pma1', 'value'),
      Output('pma2', 'value'),
      Output('tma1', 'value'),
@@ -894,7 +894,7 @@ def updateControls(selected_rows,data):
     
     return pma1,pma2,tma1,tma2
 
-@app.callback(
+@server.callback(
     [Output('tma1_2', 'value'),
     Output('tma2_2', 'value')],
     [Input('check_all', 'value')],prevent_initial_call=True)
@@ -904,7 +904,7 @@ def updateDropdowns(value):
     else:
         raise PreventUpdate()
 
-@app.callback(
+@server.callback(
     Output('checklist-container', 'children'),
     [Input('tma1_2', 'value'),
     Input('tma2_2', 'value')],prevent_initial_call=False)
@@ -917,7 +917,7 @@ def updateCheckbox(value,value2):
                                             value=[])
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    server.run_server(debug=True)
 
 
 
