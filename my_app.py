@@ -22,7 +22,7 @@ def moving_averages(btc,tma1,tma2,ma1,ma2):
         btc['ma1'] = btc['close'].ewm(span=ma1, adjust=False).mean()
     elif tma1 == "wma":
         weights = np.arange(1,ma1+1) #this creates an array with integers 1 to 10 included
-        btc['ma1'] = btc['close'].rolling(ma1).serverly(lambda prices: np.dot(prices, weights)/weights.sum(), raw=True)
+        btc['ma1'] = btc['close'].rolling(ma1).apply(lambda prices: np.dot(prices, weights)/weights.sum(), raw=True)
     elif tma1 == "dema":
         ema1 = btc['close'].ewm(span=ma1, adjust=False).mean()
         ema2 = ema1.ewm(span=ma1, adjust=False).mean()
@@ -88,7 +88,7 @@ def moving_averages(btc,tma1,tma2,ma1,ma2):
         btc['ma2'] = btc['close'].ewm(span=ma2, adjust=False).mean()
     elif tma2 == "wma":
         weights = np.arange(1,ma2+1) #this creates an array with integers 1 to 10 included
-        btc['ma2'] = btc['close'].rolling(ma2).serverly(lambda prices: np.dot(prices, weights)/weights.sum(), raw=True)
+        btc['ma2'] = btc['close'].rolling(ma2).apply(lambda prices: np.dot(prices, weights)/weights.sum(), raw=True)
     elif tma2 == "dema":
         ema1 = btc['close'].ewm(span=ma2, adjust=False).mean()
         ema2 = ema1.ewm(span=ma2, adjust=False).mean()
@@ -284,13 +284,13 @@ def loop_single_pair(btcdataset, mini1,maxi1,mini2,maxi2, tma1,tma2, rows,same_s
                               }
             
             
-        lprofitlongs.serverend(output['profitlongs'])
-        lprofitshorts.serverend(output['profitshorts'])
-        lprofitstotal.serverend(output['profitstotal'])
-        ltrades.serverend(output['trades'])  
-        ltrades_positivos.serverend(output['%_winning_trades'])  
-        lmaxdrawdown.serverend(output['max_drawdown'])  
-        lbeats_bnh.serverend(output['beats_bnh']) 
+        lprofitlongs.append(output['profitlongs'])
+        lprofitshorts.append(output['profitshorts'])
+        lprofitstotal.append(output['profitstotal'])
+        ltrades.append(output['trades'])  
+        ltrades_positivos.append(output['%_winning_trades'])  
+        lmaxdrawdown.append(output['max_drawdown'])  
+        lbeats_bnh.append(output['beats_bnh']) 
      
     grid['profitsshorts'] = lprofitshorts
     grid['profitslongs'] = lprofitlongs      
@@ -371,8 +371,8 @@ def update_chart(df,pma1,tma1,pma2,tma2,ticker_input,logscale):
                   template='plotly_dark',
                   paper_bgcolor='rgba(0, 0, 0, 0)',
                   plot_bgcolor='rgba(0, 0, 0, 0)',
-                  width=870,
-                  height=565,
+                  # width=870,
+                  # height=565,
                   hovermode='x',
                   autosize=True,
                   # title={'text': str(ticker_input)+" - Close", 'font': {'color': 'white'}, 'x': 0.5},
@@ -461,25 +461,25 @@ server.layout = html.Div(
             [
                 html.Div(
                     [
-                        html.H4("Moving Averages Crossover Strategy Scanner", className="server__header__title"),
+                        html.H4("Moving Averages Crossover Strategy Scanner", className="app__header__title"),
                         html.P(
-                            "This server enables quick scanning of random moving averages crossover strategies for swing trading.",
-                            className="server__header__title--grey",
+                            "This app enables quick scanning of random moving averages crossover strategies for swing trading.",
+                            className="app__header__title--grey",
                         ),
                     ],
-                    className="server__header__desc",
+                    className="app__header__desc",
                 ),
                 html.Div(
                     [
                         html.Img(
                             src=server.get_asset_url("dash-new-logo.png"),
-                            className="server__menu__img",
+                            className="app__menu__img",
                         )
                     ],
-                    className="server__header__logo",
+                    className="app__header__logo",
                 ),
             ],
-            className="server__header",
+            className="app__header",
         ),
         html.Div(
             [
@@ -711,7 +711,7 @@ server.layout = html.Div(
                 ),
                 
             ],
-            className="server__content",
+            className="app__content",
         ),
         html.Div(
     [
@@ -752,10 +752,10 @@ server.layout = html.Div(
                     className="one-third column histogram__direction",
                 ),
             ],
-            className="server__content",
+            className="app__content",
         ),
     ],
-    className="server__container",
+    className="app__container",
 )
 
 
