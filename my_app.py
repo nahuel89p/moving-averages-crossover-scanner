@@ -895,6 +895,7 @@ def updateCheckbox(value,value2):
         return dcc.Checklist(id="check_all",
                                             options=[{'label': 'Check all MAs', 'value': "Yes"}],
                                             value=[])
+server = app.server
 if __name__ == "__main__":
     app.run_server(debug=True)
 
