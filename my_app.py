@@ -202,7 +202,7 @@ def mas_trader(btcdataset,ma1,tma1,ma2,tma2, fee, tradeSize, purpose):
                     "trades" : trades,
                     "%_winning_trades": round(len(btc.loc[btc['profitstotal'] > 0 ])/ len(btc),3),
                     "avg_profit": round((profitlongs + profitshorts) /trades,3),
-                    "max_drawdown": maxdrawdown,
+                    #"max_drawdown": maxdrawdown,
                     "beats_bnh": beats_bnh
                     }
         
@@ -271,7 +271,7 @@ def loop_single_pair(btcdataset, mini1,maxi1,mini2,maxi2, tma1,tma2, rows,same_s
                               "countTrue" : 0,
                               "trades" : 0,
                               "%_winning_trades": 0,
-                              "max_drawdown":0,
+                              #"max_drawdown":0,
                               "beats_bnh":""
                               }
             
@@ -280,7 +280,7 @@ def loop_single_pair(btcdataset, mini1,maxi1,mini2,maxi2, tma1,tma2, rows,same_s
         lprofitstotal.append(output['profitstotal'])
         ltrades.append(output['trades'])  
         ltrades_positivos.append(output['%_winning_trades'])  
-        lmaxdrawdown.append(output['max_drawdown'])  
+        #lmaxdrawdown.append(output['max_drawdown'])  
         lbeats_bnh.append(output['beats_bnh']) 
 
     grid['profitslongs'] = lprofitlongs      
@@ -289,7 +289,7 @@ def loop_single_pair(btcdataset, mini1,maxi1,mini2,maxi2, tma1,tma2, rows,same_s
     grid['trades'] = ltrades
     grid['%_winning_trades'] = ltrades_positivos
     grid['avg_profit'] = round(grid['profitstotal']/ grid['trades'],1)
-    grid['max_drawdown'] = lmaxdrawdown
+    #grid['max_drawdown'] = lmaxdrawdown
     grid['beats_bnh'] = lbeats_bnh
 
     grid = grid.sort_values(by=['profitstotal'], ascending=False)
@@ -336,7 +336,7 @@ def update_chart(df,pma1,tma1,pma2,tma2,ticker_input,logscale):
     
     fig3.add_trace(go.Scatter(x=compras.index, y=compras['close'],
                         mode='markers',
-                        name='buy',
+                        name='long',
                         marker=dict(
                 color='Green',
                 size=9,
@@ -347,7 +347,7 @@ def update_chart(df,pma1,tma1,pma2,tma2,ticker_input,logscale):
     
     fig3.add_trace(go.Scatter(x=ventas.index, y=ventas['close'],
                         mode='markers',
-                        name='sell',
+                        name='short',
                         marker=dict(
                 color='Red',
                 size=9,
@@ -399,7 +399,7 @@ def updatetable(df,pma1,tma1,pma2,tma2):
     output['profitstotal'] = '{:.1%}'.format(output['profitstotal'])
     output['%_winning_trades'] = '{:.1%}'.format(output['%_winning_trades'])
     output['avg_profit'] = '{:.1%}'.format(output['avg_profit'])
-    output['max_drawdown'] = '{:.1%}'.format(output['max_drawdown'])
+    #output['max_drawdown'] = '{:.1%}'.format(output['max_drawdown'])
 
     return output
 
@@ -419,10 +419,10 @@ listamedias =     [{'label': 'SMA', 'value': 'sma'},
 intervals =       [{'label': '1D', 'value': '1d'},
                    {'label': '1H', 'value': '60m'}]
 
-osma1 = 328
-osma2 = 311
-ostma1 = "tema"
-ostma2 = "tema"
+osma1 = 79
+osma2 = 41
+ostma1 = "ema"
+ostma2 = "dema"
 osticker='AAPL'
 ostf ='60m'
 p="2y"
@@ -458,8 +458,10 @@ app.layout = html.Div(
                 html.Div(
                     [
                         html.H4("Moving Averages Crossover Strategy Scanner", className="app__header__title"),
-                        html.P(
-                            "This app enables quick scanning of random moving averages crossover strategies for swing trading.",
+                        html.P([
+                            "This app enables quick scanning of random moving averages crossover strategies for swing trading.", html.Br(),
+                            "Assumptions: Unchanged position size; long = closes prior short and opens long; short = closes prior long and opens short 1x.", html.Br(),
+                            "Unrealized PnL not computed."],
                             className="app__header__title--grey",
                         ),
                     ],
