@@ -148,76 +148,70 @@ def moving_averages(btc,tma1,tma2,ma1,ma2):
        btc['ma2'] = dynamic_minmax( pd.Series.to_numpy(btc['close']), ma2,1.25)   
     return btc
 
-def mas_trader(btcdataset,ma1,tma1,ma2,tma2, fee,tradeSize, purpose):                    
-    # fee = 1 - (fee/100)   
+def mas_trader(btcdataset,ma1,tma1,ma2,tma2, fee, tradeSize, purpose):                    
     fee = (fee/100)   
-
     
     btc = copy.deepcopy(btcdataset)     
 
-    
-    btc=btc.dropna() 
+    #btc=btc.dropna() 
     
     btc = moving_averages(btc,tma1,tma2,ma1,ma2)
-    btc=btc.dropna() 
+    #btc = btc.dropna() 
     
+    btc['flag'] = 'NoTrade'
+
     
     btc.loc[(btc['ma2'] < btc['ma1']) & (btc['ma2'].shift(1) >= btc['ma1'].shift(1)), 'flag'] = 'Short'  
     btc.loc[(btc['ma2'] > btc['ma1']) & (btc['ma2'].shift(1) <= btc['ma1'].shift(1)), 'flag'] = 'Long'  
-
         
-    btc=btc.dropna()  
     
-    btc=btc.iloc[1:,]
+    #btc = btc.dropna(axis = 0, subset = 'flag')  
+    
+    #btc=btc.iloc[1:,]
 
+    btc = btc.loc[btc.flag != 'NoTrade',:]
     btc['test'] = btc['flag'] == btc['flag'].shift(1)     
     
     btc = btc.loc[btc['test']   == False, ]    
 
     sp=(tradeSize /btc['close'].shift(1))            
-    btc['profit1'] =tradeSize -( sp * btc['close']) -(tradeSize*fee)-(sp*fee)
-
-    btc['profit2'] = ((btc['close']- btc['close'].shift(1)) -  (btc['close']*fee) - (btc['close'].shift(1)*fee)) / btc['close'].shift(1) * tradeSize
-    
-    
+    btc['profit1'] = (tradeSize -( sp * btc['close']) -(tradeSize*fee)-(sp*fee) )/tradeSize
+    btc['profit2'] = (((btc['close']- btc['close'].shift(1)) -  (btc['close']*fee) - (btc['close'].shift(1)*fee)) / btc['close'].shift(1) * tradeSize)/tradeSize
     
     btc['profitlongs'] = btc.loc[ btc['flag']=='Short' , 'profit2']
     btc['profitshorts'] =  btc.loc[ btc['flag']=='Long' , 'profit1']
     btc['profitstotal'] = btc[['profitlongs', 'profitshorts']].sum(axis=1)
-    btc['cumsumprofits'] = 1000+btc['profitstotal'].cumsum(skipna=True)
+    btc['cumsumprofits'] = btc['profitstotal'].cumsum(skipna=True)
     btc['cummaxprofits'] = btc['cumsumprofits'].cummax(skipna=True)
     
-    btc['drawdown'] = ( btc['cummaxprofits']  - btc['cumsumprofits']) /btc['cummaxprofits']
-    bnh = (btc['close'].iat[-1]- btc['close'].iat[0]) / btc['close'].iat[0] * 1000
-
-    
+    btc['drawdown'] = ( btc['cummaxprofits']  - btc['cumsumprofits']) / (btc['cummaxprofits'])
+    bnh = (btc['close'].iat[-1]- btc['close'].iat[0]) / btc['close'].iat[0] #* tradeSize
 
     if purpose == "loop":
-        profitlongs =  round(np.nansum(btc['profitlongs']),1)
-        profitshorts = round(np.nansum(btc['profitshorts']),1)    
+        profitlongs =  round(np.nansum(btc['profitlongs']), 3)
+        profitshorts = round(np.nansum(btc['profitshorts']), 3)    
         trades = len(btc)
-        profitstotal = round(profitlongs+profitshorts,1)
-        maxdrawdown= round(btc['drawdown'].max()*100,1)
-        beats_bnh= np.where( bnh > (btc['cumsumprofits'].iat[-1]-1000) ,"No","Yes"  )
-
-
+        profitstotal = round(profitlongs + profitshorts,3)
+        maxdrawdown= round(btc['drawdown'].max(),3)
+        beats_bnh= np.where( bnh > (btc['cumsumprofits'].iat[-1] ) ,"No", "Yes" )
 
         output = {
                     "profitlongs"  : profitlongs,
-                          "profitshorts" : profitshorts,
-                          "profitstotal": profitstotal,
-                          "trades" : trades,
-                          "%_winning_trades": round(len(btc.loc[btc['profitstotal'] >0 ])/len(btc)*100,1),
-                          "avg_profit": round(profitstotal/trades,1),
-                          "max_drawdown": maxdrawdown,
-                          "beats_bnh": beats_bnh
-      }
-        
-        
+                    "profitshorts" : profitshorts,
+                    "profitstotal": profitstotal,
+                    "trades" : trades,
+                    "%_winning_trades": round(len(btc.loc[btc['profitstotal'] > 0 ])/ len(btc),3),
+                    "avg_profit": round((profitlongs + profitshorts) /trades,3),
+                    "max_drawdown": maxdrawdown,
+                    "beats_bnh": beats_bnh
+                    }
         
     elif purpose == "standalone":
-        output = btc
+        output = copy.deepcopy(btc)
     return output
+
+
+
 
 
 def loop_single_pair(btcdataset, mini1,maxi1,mini2,maxi2, tma1,tma2, rows,same_same):
@@ -281,7 +275,6 @@ def loop_single_pair(btcdataset, mini1,maxi1,mini2,maxi2, tma1,tma2, rows,same_s
                               "beats_bnh":""
                               }
             
-            
         lprofitlongs.append(output['profitlongs'])
         lprofitshorts.append(output['profitshorts'])
         lprofitstotal.append(output['profitstotal'])
@@ -289,9 +282,9 @@ def loop_single_pair(btcdataset, mini1,maxi1,mini2,maxi2, tma1,tma2, rows,same_s
         ltrades_positivos.append(output['%_winning_trades'])  
         lmaxdrawdown.append(output['max_drawdown'])  
         lbeats_bnh.append(output['beats_bnh']) 
-     
-    grid['profitsshorts'] = lprofitshorts
+
     grid['profitslongs'] = lprofitlongs      
+    grid['profitshorts'] = lprofitshorts
     grid['profitstotal'] = lprofitstotal
     grid['trades'] = ltrades
     grid['%_winning_trades'] = ltrades_positivos
@@ -315,7 +308,6 @@ def update_chart(df,pma1,tma1,pma2,tma2,ticker_input,logscale):
     output = mas_trader(mkdata,pma1,tma1,pma2,tma2, 0.075,1000, "standalone")    
     output['profitstotal'] = output.profitstotal.cumsum()
     profitstotal = output.loc[ output.profitstotal.notnull() , 'profitstotal']
-    
     
     ventas  = output[ output['flag'] == "Short"]    
     compras = output[ output['flag'] == "Long" ]
@@ -379,11 +371,12 @@ def update_chart(df,pma1,tma1,pma2,tma2,ticker_input,logscale):
                   transition={'duration': 400,'easing': 'linear-in-out' },
                   margin={'l':10, 'r':10, 't':10, 'b':10},
                   legend=dict(    orientation="h",    yanchor="bottom",    y=1.02,    xanchor="right",    x=1)
-              ),    
+                  ),    
         
-    fig3.update_yaxes(title_text="Accumulated profits", secondary_y=True)
+    fig3.update_yaxes(title_text="Accumulated profits", secondary_y=True, )
     fig3.update_yaxes(title_text="Price", secondary_y=False)
 
+    fig3.layout.yaxis2.tickformat= ',.2%' 
     if logscale==True:
         fig3.update_layout(    
                   yaxis={'type': 'log',                  
@@ -399,7 +392,15 @@ def update_chart(df,pma1,tma1,pma2,tma2,ticker_input,logscale):
 
 def updatetable(df,pma1,tma1,pma2,tma2):    
     mkdata = moving_averages(df,tma1,tma2,pma1,pma2)
-    output = mas_trader(mkdata,pma1,tma1,pma2,tma2, 0.075,1000, "loop")    
+    output = mas_trader(mkdata,pma1,tma1,pma2,tma2, 0.075,1000, "loop")
+    
+    output['profitlongs'] = '{:.1%}'.format(output['profitlongs'])
+    output['profitshorts'] = '{:.1%}'.format(output['profitshorts'])
+    output['profitstotal'] = '{:.1%}'.format(output['profitstotal'])
+    output['%_winning_trades'] = '{:.1%}'.format(output['%_winning_trades'])
+    output['avg_profit'] = '{:.1%}'.format(output['avg_profit'])
+    output['max_drawdown'] = '{:.1%}'.format(output['max_drawdown'])
+
     return output
 
 allvalues =['sma','ema','wma','dema','tema','trima','vama','zlema','minmax_c']
@@ -422,7 +423,7 @@ osma1 = 328
 osma2 = 311
 ostma1 = "tema"
 ostma2 = "tema"
-osticker='ggal'
+osticker='AAPL'
 ostf ='60m'
 p="2y"
 
@@ -737,7 +738,7 @@ app.layout = html.Div(
              html.Div(
                      [        html.Div(
                              [
-                                                         html.Div(
+                                 html.Div(
                             [html.H6("Create Telegram Notification:", className="graph__subtitle")]
                         ),
                                  ],
@@ -801,15 +802,13 @@ def update_date_range(data,value):
     Input('log_checkbox', 'value') ],
     State('ticker_input', 'value') ,prevent_initial_call=True)
 def updateChart(pma1,tma1,pma2,tma2,df,log,ticker_input):   
-
     df = pd.read_json(df)
-    
     if len(log) == 1:
         logscale = True
     else:
         logscale = False        
 
-    trace,layout=update_chart(df,pma1,tma1,pma2,tma2,ticker_input,logscale)
+    trace,layout = update_chart(df,pma1,tma1,pma2,tma2,ticker_input,logscale)
     
     graphdata =  {
         'data': trace,
@@ -818,10 +817,10 @@ def updateChart(pma1,tma1,pma2,tma2,df,log,ticker_input):
     
     data2 = updatetable(df,pma1,tma1,pma2,tma2)
     data2 = pd.DataFrame([data2])
-    data2.insert(loc=0, column='tma2', value=tma2)
-    data2.insert(loc=0, column='tma1', value=tma1)
-    data2.insert(loc=0, column='ma2', value=pma2)
-    data2.insert(loc=0, column='ma1', value=pma1)
+    data2.insert(loc = 0, column='tma2', value=tma2)
+    data2.insert(loc = 0, column='tma1', value=tma1)
+    data2.insert(loc = 0, column='ma2', value=pma2)
+    data2.insert(loc = 0, column='ma1', value=pma1)
     
     columns= [{'name': col, 'id': col} for col in data2.columns ]
     data2= data2.to_dict('records') 
@@ -850,12 +849,12 @@ def updateTable(n_clicks, data,slider_1, slider_2,tma1_2,tma2_2,same_same):
         mini_2 = slider_2[0]
         maxi_2 = slider_2[1]
         df = pd.read_json(data)    
-        grid = loop_single_pair(df, mini_1,maxi_1,mini_2,maxi_2, tma1_2,tma2_2, 20,same_same)
-        columns= [{'name': col, 'id': col} for col in grid.columns]
-        data2= grid.to_dict('records')  
+        grid = loop_single_pair(df, mini_1, maxi_1, mini_2, maxi_2, tma1_2, tma2_2, 20, same_same)
+        columns = [{'name': col, 'id': col} for col in grid.columns]
+        data2 = grid.to_dict('records')  
     else:
         pass
-    return data2, columns,selected        
+    return data2, columns, selected        
 
 @app.callback(
     [Output('pma1', 'value'),
@@ -865,7 +864,7 @@ def updateTable(n_clicks, data,slider_1, slider_2,tma1_2,tma2_2,same_same):
       Input('table', 'selected_rows') ,      
       [State('table', 'data') ]
       ,prevent_initial_call=True)
-def updateControls(selected_rows,data):   
+def updateControls(selected_rows, data):   
     ix=selected_rows[0]
     pma1 = data[ix]['ma1']
     pma2 = data[ix]['ma2']
@@ -879,8 +878,8 @@ def updateControls(selected_rows,data):
     Output('tma2_2', 'value')],
     [Input('check_all', 'value')],prevent_initial_call=True)
 def updateDropdowns(value):    
-    if len(value)==1:
-        return allvalues,allvalues
+    if len(value) == 1:
+        return allvalues, allvalues
     else:
         raise PreventUpdate()
 
@@ -898,8 +897,6 @@ def updateCheckbox(value,value2):
 server = app.server
 if __name__ == "__main__":
     app.run_server(debug=True)
-
-
 
 
 
